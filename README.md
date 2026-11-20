@@ -12,7 +12,10 @@ This repository contains:
 assignment2/
 +-- README.md                  # download, build the tables, submit
 +-- SCHEMA.md                  # every column, explained
++-- train_activity.ipynb       # features, model training, validation, and prediction
++-- requirements.txt          # Python dependencies
 +-- scripts/
+|   +-- download_gharchive.py  # downloads the historical hourly files
 |   +-- preprocess.py          # builds the 8 tables from GH Archive
 |   +-- evaluate.py            # checks the format, computes the score
 |   +-- cohort.txt             # contains 9,000 anonymized user IDs (read by preprocess.py)
@@ -20,6 +23,45 @@ assignment2/
     +-- test_input.csv         # official test users
     +-- sample_submission.csv  # example output in the correct format
 ```
+
+## Run the model
+
+From the repository root, use Python 3.11 and install the dependencies. The commands below use
+PowerShell. On Linux or macOS, activate the environment with `source .venv/bin/activate` and
+copy the manifest with `cp gharchive/hours.json data/hours.json`.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+python scripts/download_gharchive.py --raw gharchive --start 2026-10-03T16:00Z --end 2026-11-20T15:00Z
+python scripts/preprocess.py --raw gharchive --out data
+Copy-Item gharchive/hours.json data/hours.json
+python -m jupyter lab train_activity.ipynb
+```
+
+In JupyterLab, select the Python kernel and run **Restart Kernel and Run All Cells**. To run
+from a terminal, use `python -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=600 train_activity.ipynb`.
+Set `ASSIGNMENT_STUDENT_ID` in the shell or edit `STUDENT_ID` in the setup cell to change
+the submission filename.
+
+The reproducible archive interval is **Oct. 3, 2026 at 16:00 UTC through Nov. 20, 2026
+at 15:00 UTC, exclusive**. This corresponds to Oct. 4 at 00:00 through Nov. 20 at 23:00
+in Taiwan. The 1,151 hourly files occupy about 8.1 GiB before preprocessing.
+Rerunning the download command reuses completed files and records missing hours in
+`hours.json`. Use a dedicated raw data folder for this interval.
+
+The notebook builds time-filtered aggregates across the eight anonymized tables and fits
+one L2-regularized logistic regression per activity. Historical snapshots use the same
+feature-to-target gap as the final forecast. Training, threshold tuning, and held-out
+evaluation use disjoint time windows. The ablation compares 7-day counts, richer temporal
+features, and relationship features against the copy-last-week baseline.
+
+The last cell that writes predictions checks the CSV against `submission/test_input.csv`.
+The notebook also writes the historical windows, ablation metrics, schema, and framework
+diagram under `results/`. With [Graphviz](https://graphviz.org/) installed, render the
+schema with `dot -Tsvg results/schema.dot -o results/schema.svg`.
 
 ## ⭐ 1. Download the GH Archive files
 
@@ -127,7 +169,7 @@ week of 2026/09/27 – 10/04.
   [RelBench](https://relbench.stanford.edu) examples. The version with time encoding also
   tells the model how long before the prediction time each row happened.
 
-## Data Claim
+## Data Source
 
 The data used in this assignment is sourced from [GH Archive](https://www.gharchive.org), a
 publicly available archive of GitHub events. This assignment is intended for educational

@@ -1,0 +1,7 @@
+numpy==2.4.6
+pandas==2.3.3
+pyarrow==24.0.0
+scipy==1.17.1
+threadpoolctl==3.8.0
+matplotlib==3.11.2
+jupyterlab==4.6.6

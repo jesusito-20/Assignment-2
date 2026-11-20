@@ -1,0 +1,8 @@
+.venv/
+.assignment-deps/
+.ipynb_checkpoints/
+__pycache__/
+gharchive/
+data/
+results/
+output_*.csv
