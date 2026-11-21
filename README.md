@@ -1,7 +1,5 @@
 # BigData2026-Assignment2
 
-**Updates are marked with ⭐.**
-
 In this assignment you predict what GitHub users will do in the coming week. For each test
 user, you predict which of 6 activities (opening a pull request, pushing code, and so on) the
 user will perform during the test week.
@@ -12,12 +10,13 @@ This repository contains:
 assignment2/
 +-- README.md                  # download, build the tables, submit
 +-- SCHEMA.md                  # every column, explained
-+-- train_activity.ipynb       # features, model training, validation, and prediction
++-- train_activity.ipynb       # temporal GNN, baselines, validation, and prediction
 +-- requirements.txt          # Python dependencies
 +-- scripts/
 |   +-- download_gharchive.py  # downloads the historical hourly files
 |   +-- preprocess.py          # builds the 8 tables from GH Archive
 |   +-- evaluate.py            # checks the format, computes the score
+|   +-- schema_diagram.py      # builds the schema diagram source
 |   +-- cohort.txt             # contains 9,000 anonymized user IDs (read by preprocess.py)
 +-- submission/
     +-- test_input.csv         # official test users
@@ -52,18 +51,23 @@ in Taiwan. The 1,151 hourly files occupy about 8.1 GiB before preprocessing.
 Rerunning the download command reuses completed files and records missing hours in
 `hours.json`. Use a dedicated raw data folder for this interval.
 
-The notebook builds time-filtered aggregates across the eight anonymized tables and fits
-one L2-regularized logistic regression per activity. Historical snapshots use the same
-feature-to-target gap as the final forecast. Training, threshold tuning, and held-out
-evaluation use disjoint time windows. The ablation compares 7-day counts, richer temporal
-features, and relationship features against the copy-last-week baseline.
+The submission model is a **temporal graph neural network** trained on the eight anonymized
+tables. Each cutoff produces a graph with one node per eligible row and bidirectional edges
+for available foreign keys. Recent user–repository shortcut edges expose collaboration
+patterns within two message-passing steps. Messages use an exponential age weight with
+a four-day time constant. One jointly trained model produces six activity probabilities.
+Training runs on CPU using NumPy and SciPy.
+
+Historical snapshots use the same feature-to-target gap as the final forecast. Training,
+threshold tuning, and held-out evaluation use disjoint time windows. The notebook compares
+the temporal GNN with a uniform-edge GNN, logistic-regression baselines, and copy last week.
 
 The last cell that writes predictions checks the CSV against `submission/test_input.csv`.
 The notebook also writes the historical windows, ablation metrics, schema, and framework
 diagram under `results/`. With [Graphviz](https://graphviz.org/) installed, render the
 schema with `dot -Tsvg results/schema.dot -o results/schema.svg`.
 
-## ⭐ 1. Download the GH Archive files
+## 1. Download the GH Archive files
 
 Download the hourly files of the time period you want from [GH Archive](https://www.gharchive.org)
 into your own folder `RAW_DATA_FOLDER`. GH Archive provides one file per hour, named by UTC date
@@ -78,7 +82,7 @@ wget -P RAW_DATA_FOLDER https://data.gharchive.org/2026-10-{01..31}-{0..23}.json
 
 For more download options, see the GH Archive website.
 
-## ⭐ 2. Build the tables
+## 2. Build the tables
 
 ```bash
 python scripts/preprocess.py --raw RAW_DATA_FOLDER --out YOUR_OUTPUT_FOLDER
@@ -114,9 +118,9 @@ only rows whose row time is before t. Do not filter pull requests, issues or rev
 
 ## 4. Test users and output
 
-⭐ **Test week:** 2026/11/22 00:00 – 11/29 00:00 (Taiwan time)
+**Test week:** 2026/11/22 00:00 – 11/29 00:00 (Taiwan time)
 
-⭐ **Missing data:** Some hours are missing or incomplete in GH Archive itself. If GH Archive is
+**Missing data:** Some hours are missing or incomplete in GH Archive itself. If GH Archive is
 missing the data of an activity during the test week, that activity is not scored.
 
 `submission/test_input.csv` lists the test users. Its `UserID` column is `Users.github_user_id`.
